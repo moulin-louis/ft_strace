@@ -6,6 +6,7 @@
 #define FT_STRACE_H
 
 #include <sys/ptrace.h> //needed for ptrace
+#include <asm/ptrace.h>
 #include "libft.h"
 #define _GNU_SOURCE
 #include <sched.h> //needed for clone
@@ -13,14 +14,16 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #define _GNU_SOURCE
+#include <elf.h>
+#include <linux/sched.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sched.h>
-#include <unistd.h>
 #include <sys/syscall.h>
-#include <linux/sched.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
+int child_fn(char** av, char** envp) __attribute__((noreturn));
 
-#define __aligned_uint64_t uint64_t __attribute__((aligned(8)))
 
 #endif // FT_STRACE_H
