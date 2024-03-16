@@ -4,95 +4,83 @@
 
 #include "ft_strace.h"
 
-void exit_n_kill(const pid_t pid) {
-  kill(pid, SIGKILL);
-  exit(42);
+t_syscall syscall_table[SYSCALLS_NBR_64] = {SYSCALLS_ENT_64};
+bool stat_count = false;
+
+bool execve_is_done(bool* syscall_status, const char* syscall_name) {
+  static bool execve_is_done = false;
+  if (syscall_status == NULL || syscall_name == NULL)
+    return execve_is_done;
+  if (execve_is_done == false && strcmp("execve", syscall_name) == 0) {
+    execve_is_done = true;
+    *syscall_status = true;
+  }
+  return execve_is_done;
 }
 
-int child_fn(char** av, char** envp) {
-  kill(getpid(), SIGSTOP);
-  if (execve(av[1], av + 1, envp) == -1) {
-    perror("execve");
-    exit(1);
+void handle_syscall_io(const int32_t pid) {
+  static bool syscall_status = false; // control if were dealing with the start of a syscall or the end
+  struct pt_regs regs;
+  struct iovec io = {
+    .iov_base = &regs,
+    .iov_len = sizeof(regs),
+  };
+  ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &io);
+  const uint64_t nbr = regs.orig_rax;
+  const t_syscall syscall = get_syscall(nbr);
+  if (!execve_is_done(&syscall_status, syscall.name))
+    return;
+  if (syscall_status) {
+    printf("%s", syscall.name);
+    syscall_status = false;
   }
-  exit(0);
+  else {
+    printf(" = %ld\n", regs.rax);
+    syscall_status = true;
+  }
 }
 
-void block_signal(pid_t pid, int* status) {
-  sigset_t sig_new_mask;
-  sigset_t sig_block;
-
-  sigemptyset(&sig_new_mask);
-  sigemptyset(&sig_block);
-  sigprocmask(SIG_SETMASK, &sig_new_mask, NULL);
-  waitpid(pid, status, 0);
-  sigaddset(&sig_block, SIGHUP);
-  sigaddset(&sig_block, SIGINT);
-  sigaddset(&sig_block, SIGQUIT);
-  sigaddset(&sig_block, SIGPIPE);
-  sigaddset(&sig_block, SIGTERM);
-  sigprocmask(SIG_BLOCK, &sig_block, NULL);
-}
-
-long clone3(struct clone_args* cl_args, const size_t size) { return syscall(SYS_clone3, cl_args, size); }
-
-uint64_t check_syscall(pid_t pid, struct pt_regs* regs) {
-  struct iovec iov = {regs, sizeof(struct pt_regs)};
-  const int32_t syscall_status = ptrace(PT_SYSCALL, pid, NULL, NULL);
-  if (syscall_status == -1) {
-    perror("parent: ptrace(PTRACE_SYSCALL)");
-    exit_n_kill(pid);
+int32_t analysis_tracee(const int64_t pid) {
+  int32_t signal = 0;
+  siginfo_t sig = {0};
+  while (true) {
+    int32_t status = 0;
+    waitpid(pid, &status, 0);
+    if (WIFSTOPPED(status)) {
+      ptrace(PTRACE_GETSIGINFO, pid, 0, &sig);
+      signal = WSTOPSIG(status);
+      if (sig.si_code == SIGTRAP || sig.si_code == (SIGTRAP | 0x80)) {
+        handle_syscall_io(pid);
+        signal = 0;
+      }
+      else if (execve_is_done(NULL, NULL))
+        handle_signal(sig);
+      ptrace(PTRACE_SYSCALL, pid, 0, signal);
+    }
+    if (WIFEXITED(status)) {
+      const char ret_value = WEXITSTATUS(status);
+      printf(" = %d\n", ret_value);
+      exit(ret_value);
+    }
+    if (WIFSIGNALED(status)) {
+      printf("killed by sig\n");
+      raise(WTERMSIG(status));
+      exit(128 + WTERMSIG(status));
+    }
   }
-  int status = 0;
-  waitpid(pid, &status, 0);
-  if (WIFEXITED(status))
-    return -1;
-  const int64_t retval = ptrace(PTRACE_GETREGSET, pid, (void*)NT_PRSTATUS, (void*)&iov);
-  if (retval == -1) {
-    perror("parent: ptrace(PTRACE_GETREGSET)");
-    exit_n_kill(pid);
-  }
-  return regs->orig_rax;
 }
 
 int main(int ac, char** av, char** envp) {
-  if (ac == 1) {
-    ft_putstr_fd("Usage: ./ft_strace COMMAND [COMMAND_OPTIONS]\n", 2);
+  (void)envp;
+  char path_exe[4096] = {0};
+  if (parse_arg(ac, av, path_exe)) {
+    printf("parsing failed\n");
     return 1;
   }
-  __aligned_u64 x = 0;
-  struct clone_args arg = {0};
-  arg.flags = CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID;
-  arg.child_tid = (__u64)&x;
-  arg.exit_signal = SIGCHLD;
-  const int64_t pid = clone3(&arg, sizeof(arg));
-  if (pid == -1) {
-    perror("parent: clone3");
-    exit(1);
-  }
-  if (pid == 0)
-    child_fn(av, envp);
-  int64_t retval = ptrace(PTRACE_SEIZE, pid, NULL, NULL);
-  if (retval == -1) {
-    perror("parent: ptrace(PTRACE_SEIZE)");
-    exit_n_kill(pid);
-  }
-  int status = 0;
-  block_signal(pid, &status);
-  retval = ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD);
-  if (retval == -1) {
-    perror("parent: ptrace(PTRACE_INTERRUPT)");
-    exit_n_kill(pid);
-  }
-  while (true) {
-    struct pt_regs regs_syscall;
-    const uint64_t syscall_code = check_syscall(pid, &regs_syscall);
-    if (retval == -1)
-      break;
-    struct pt_regs regs_retval;
-    const uint64_t retval_syscall = check_syscall(pid, &regs_retval);
-    dprintf(1, "syscall = %lu, exit code = %lu\n", syscall_code, retval_syscall);
-  }
-  kill(pid, SIGKILL);
+  // const int64_t pid = exec_arg(av, envp);
+  // setup_tracer(pid);
+  // analysis_tracee(pid);
+  // signal_unblock();
+  // kill(pid, SIGKILL);
   return 0;
 }
