@@ -8,6 +8,7 @@ t_syscall sc_table_64[SYSCALLS_NBR_64] = {SYSCALLS_ENT_64};
 t_syscall sc_table_32[SYSCALLS_NBR_32] = {SYSCALLS_ENT_32};
 pid_t pid;
 bool stat_count = false;
+char* errno_str[] = {ERRNO_ENT};
 
 bool execve_is_done(bool* syscall_status, const char* syscall_name) {
   static bool execve_is_done = false;
@@ -104,6 +105,10 @@ int main(int ac, char** av, char** envp) {
   }
   if (parse_opt(ac, av, path_exe))
     return 1;
+  if (get_path(av[1]) == NULL) {
+    fprintf(stderr, "ft_strace: %s: No such file\n", av[1]);
+    return 1;
+  }
   pid = exec_arg(av, envp);
   setup_tracer(pid);
   analysis_tracee(pid);

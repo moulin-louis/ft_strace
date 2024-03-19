@@ -24,13 +24,14 @@ void print_exit_sc_64(const t_regs* regs) {
   if (retval > -1 || retval < -4095) {
     if (retval > 10000 || retval < -10000)
       fprintf(stderr, ") = %#lx\n", retval);
-    fprintf(stderr, ") = %ld\n", retval);
+    else
+      fprintf(stderr, ") = %ld\n", retval);
   }
   else {
     if (-retval >= 512 && -retval <= 530)
       fprintf(stderr, ") = ? %ld\n", -retval);
     else
-      fprintf(stderr, ") = -1 %ld (%s)\n", -retval, strerror(-retval));
+      fprintf(stderr, ") = -1 %s (%s)\n", errno_str[-retval], strerror(-retval));
   }
 }
 

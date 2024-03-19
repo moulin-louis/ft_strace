@@ -9,6 +9,8 @@
 #include "libft.h"
 #include "syscall_32.h"
 #include "syscall_64.h"
+#include "errno_table.h"
+
 
 #include <argp.h> //needed for argp parser
 #include <elf.h> //needed for NT_PRSTATUS macro in ptrace getregset
@@ -83,6 +85,7 @@ extern t_syscall sc_table_64[SYSCALLS_NBR_64];
 extern t_syscall sc_table_32[SYSCALLS_NBR_32];
 extern pid_t pid;
 extern bool stat_count;
+extern char* errno_str[];
 
 #define get_syscall_64(nbr) sc_table_64[nbr]
 #define get_syscall_32(nbr) sc_table_32[nbr]
@@ -97,6 +100,8 @@ extern bool stat_count;
 void setup_tracer(int64_t pid);
 
 int32_t parse_opt(int ac, char** av, char path_exe[4096]);
+
+char* get_path(char* arg);
 
 // Exec function
 int32_t exec_arg(char** av, char** envp);

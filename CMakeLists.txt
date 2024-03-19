@@ -14,5 +14,7 @@ add_executable(ft_strace src/main.c
         src/setup.c
         inc/syscall_32.h
         src/print.c
-        src/string_manip.c)
+        src/string_manip.c
+        src/path.c
+        inc/errno.h)
 target_link_libraries(ft_strace ft)

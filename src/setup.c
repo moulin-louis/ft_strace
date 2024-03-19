@@ -48,7 +48,7 @@ int32_t exec_arg(char** av, char** envp) {
   }
   if (pid == 0) {
     raise(SIGSTOP);
-    execve(av[1], av + 1, envp);
+    execve(get_path(av[1]), av + 1, envp);
     perror("execve");
     exit(1);
   }
