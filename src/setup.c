@@ -4,36 +4,38 @@
 
 #include "ft_strace.h"
 
-static int parse_opt(const int key, char* arg, struct argp_state* state) {
+static int parse_argp(const int key, char* arg, struct argp_state* state) {
   switch (key) {
-  case 'c': {
+  case 'c':
     stat_count = true;
     break;
-  }
-  case ARGP_KEY_ARG:
-    if (state->arg_num == 0) {
-      strcpy(state->input, arg);
-    }
+  case 'v':
+    fprintf(stderr, "Version 1.0, Louis MOULIN, loumouli\n");
     break;
-  case ARGP_KEY_END: {
+  case ARGP_KEY_ARG:
+    if (state->arg_num == 0)
+      strcpy(state->input, arg);
+    break;
+  case ARGP_KEY_END:
     if (state->arg_num < 1)
       argp_usage(state);
     break;
+  default: {
   }
-  default:  {}
   }
   return 0;
 }
 
-int32_t parse_arg(int ac, char** av, char path_exe[4096]) {
-  (void)path_exe;
-  const struct argp_option opt[] = {
-    {"count-stat", 'c', 0, 0, "Count time, calls, and errors for each system call and report a summary on program exit.", 0},
-    {0, 0, 0, 0, 0, 0, },
+int32_t parse_opt(int ac, char** av, char path_exe[4096]) {
+  const struct argp_option options[] = {
+    {"count-stat", 'c', 0, 0,
+     "Count time, calls, and errors for each system call and report a summary on program exit.", 0},
+    {"version", 'v', 0, 0, "Print version info", 0},
+    {0},
   };
   struct argp argp = {0};
-  argp.options = opt;
-  argp.parser = parse_opt;
+  argp.options = options;
+  argp.parser = parse_argp;
   argp.args_doc = "PROG [ARGS]";
   return argp_parse(&argp, ac, av, 0, 0, path_exe);
 }

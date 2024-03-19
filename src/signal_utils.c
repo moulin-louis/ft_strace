@@ -19,4 +19,4 @@ void signal_block(void) {
   sigprocmask(SIG_BLOCK, &block_mask, NULL);
 }
 
-void handle_signal(const siginfo_t sig) { printf("SIG: si_code = %d, si_pid = %d ", sig.si_code, sig.si_pid); }
+void handle_signal(const siginfo_t sig) { fprintf(stderr, "SIG: si_code = %d, si_pid = %d ", sig.si_code, sig.si_pid); }

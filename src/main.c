@@ -4,7 +4,9 @@
 
 #include "ft_strace.h"
 
-t_syscall syscall_table[SYSCALLS_NBR_64] = {SYSCALLS_ENT_64};
+t_syscall sc_table_64[SYSCALLS_NBR_64] = {SYSCALLS_ENT_64};
+t_syscall sc_table_32[SYSCALLS_NBR_32] = {SYSCALLS_ENT_32};
+pid_t pid;
 bool stat_count = false;
 
 bool execve_is_done(bool* syscall_status, const char* syscall_name) {
@@ -19,36 +21,59 @@ bool execve_is_done(bool* syscall_status, const char* syscall_name) {
 }
 
 void handle_syscall_io(const int32_t pid) {
-  static bool syscall_status = false; // control if were dealing with the start of a syscall or the end
-  struct pt_regs regs;
+  static bool syscall_status = false; // control if were dealing with the entry of a syscall or the exit
+  t_regs regs = {0};
   struct iovec io = {
     .iov_base = &regs,
     .iov_len = sizeof(regs),
   };
+
   ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &io);
-  const uint64_t nbr = regs.orig_rax;
-  const t_syscall syscall = get_syscall(nbr);
-  if (!execve_is_done(&syscall_status, syscall.name))
-    return;
-  if (syscall_status) {
-    printf("%s", syscall.name);
-    syscall_status = false;
+  switch (io.iov_len) {
+  case sizeof(regs.regs_64): { // Its a 64 bits process
+    const uint64_t nbr = regs.regs_64.orig_rax;
+    const t_syscall syscall = get_syscall_64(nbr);
+    if (execve_is_done(&syscall_status, syscall.name) == false) // tracee process has not yet fully started
+      return;
+    if (syscall_status) {
+      print_entry_sc_64(&syscall, &regs);
+      syscall_status = false;
+    }
+    else {
+      print_exit_sc_64(&regs);
+      syscall_status = true;
+    }
+    break;
   }
-  else {
-    printf(" = %ld\n", regs.rax);
-    syscall_status = true;
+  case sizeof(regs.regs_32): { // Its a 32 bits one
+    const uint32_t nbr = regs.regs_32.orig_eax;
+    const t_syscall syscall = get_syscall_32(nbr);
+    if (execve_is_done(&syscall_status, syscall.name) == false) // tracee process has not yet fully started
+      return;
+    if (syscall_status) {
+      print_entry_sc_32(&syscall, &regs);
+      syscall_status = false;
+    }
+    else {
+      print_exit_sc_32(&regs);
+      syscall_status = true;
+    }
+    break;
+  }
+  default:
+    fprintf(stderr, "REALY WEIRD SIZE OF REGISTER, ABORTING !!!\n");
+    exit(1);
   }
 }
 
 int32_t analysis_tracee(const int64_t pid) {
-  int32_t signal = 0;
   siginfo_t sig = {0};
   while (true) {
     int32_t status = 0;
     waitpid(pid, &status, 0);
     if (WIFSTOPPED(status)) {
       ptrace(PTRACE_GETSIGINFO, pid, 0, &sig);
-      signal = WSTOPSIG(status);
+      int32_t signal = WSTOPSIG(status);
       if (sig.si_code == SIGTRAP || sig.si_code == (SIGTRAP | 0x80)) {
         handle_syscall_io(pid);
         signal = 0;
@@ -59,11 +84,12 @@ int32_t analysis_tracee(const int64_t pid) {
     }
     if (WIFEXITED(status)) {
       const char ret_value = WEXITSTATUS(status);
-      printf(" = %d\n", ret_value);
+      fprintf(stderr, ") = ?\n");
+      fprintf(stderr, "+++ exited with %d +++", ret_value);
       exit(ret_value);
     }
     if (WIFSIGNALED(status)) {
-      printf("killed by sig\n");
+      fprintf(stderr, "killed by sig\n");
       raise(WTERMSIG(status));
       exit(128 + WTERMSIG(status));
     }
@@ -71,16 +97,17 @@ int32_t analysis_tracee(const int64_t pid) {
 }
 
 int main(int ac, char** av, char** envp) {
-  (void)envp;
   char path_exe[4096] = {0};
-  if (parse_arg(ac, av, path_exe)) {
-    printf("parsing failed\n");
+  if (ac == 1) {
+    fprintf(stderr, "Usage: ft_strace [OPTION...] PROG [ARGS]\n");
     return 1;
   }
-  // const int64_t pid = exec_arg(av, envp);
-  // setup_tracer(pid);
-  // analysis_tracee(pid);
-  // signal_unblock();
-  // kill(pid, SIGKILL);
+  if (parse_opt(ac, av, path_exe))
+    return 1;
+  pid = exec_arg(av, envp);
+  setup_tracer(pid);
+  analysis_tracee(pid);
+  signal_unblock();
+  kill(pid, SIGKILL);
   return 0;
 }
