@@ -16,5 +16,5 @@ add_executable(ft_strace src/main.c
         src/print.c
         src/string_manip.c
         src/path.c
-        inc/errno.h)
+        inc/errno_table.h)
 target_link_libraries(ft_strace ft)
