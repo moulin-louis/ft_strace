@@ -6,17 +6,19 @@
 #define FT_STRACE_H
 
 
+#include "errno_table.h"
 #include "libft.h"
 #include "syscall_32.h"
 #include "syscall_64.h"
-#include "errno_table.h"
 
-
+#define _GNU_SOURCE
 #include <argp.h> //needed for argp parser
 #include <elf.h> //needed for NT_PRSTATUS macro in ptrace getregset
-#include <sys/ptrace.h> //needed for ptrace
-#define _GNU_SOURCE
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ptrace.h> //needed for ptrace
+#include <sys/uio.h>
 #include <sys/uio.h> //needed for iovec struct
 #include <sys/wait.h> //needed for wait
 
@@ -97,16 +99,14 @@ extern char* errno_str[];
   while (0)
 
 // Setup function
-void setup_tracer(int64_t pid);
+void setup_tracer(void);
 
 int32_t parse_opt(int ac, char** av, char path_exe[4096]);
 
 char* get_path(char* arg);
 
 // Exec function
-int32_t exec_arg(char** av, char** envp);
-
-int child_fn(char** av, char** envp) __attribute__((noreturn));
+void exec_arg(char *path_exe, int offset, char** av, char** envp);
 
 // Signal function
 void signal_unblock(void);
@@ -114,7 +114,6 @@ void signal_unblock(void);
 void signal_block(void);
 
 void handle_signal(siginfo_t sig);
-
 
 // Print function
 void print_entry_sc_64(const t_syscall* syscall, t_regs* regs);

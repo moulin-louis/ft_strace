@@ -20,7 +20,7 @@ void print_entry_sc_64(const t_syscall* syscall, t_regs* regs) {
 }
 
 void print_exit_sc_64(const t_regs* regs) {
-  const int64_t retval = regs->regs_64.rax;
+  const int64_t retval = (int64_t)regs->regs_64.rax;
   if (retval > -1 || retval < -4095) {
     if (retval > 10000 || retval < -10000)
       fprintf(stderr, ") = %#lx\n", retval);
@@ -50,7 +50,7 @@ void print_entry_sc_32(const t_syscall* syscall, t_regs* regs) {
 }
 
 void print_exit_sc_32(const t_regs* regs) {
-  const int32_t retval = regs->regs_32.eax;
+  const int32_t retval = (int32_t)regs->regs_32.eax;
   if (retval > -1 || retval < -4095) {
     if (retval > 10000 || retval < -10000)
       fprintf(stderr, ") = %#x\n", retval);

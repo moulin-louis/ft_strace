@@ -4,9 +4,12 @@
 
 #include "ft_strace.h"
 
+int offset = 0;
+
 static int parse_argp(const int key, char* arg, struct argp_state* state) {
   switch (key) {
   case 'c':
+    offset = 1;
     stat_count = true;
     break;
   case 'v':
@@ -37,25 +40,27 @@ int32_t parse_opt(int ac, char** av, char path_exe[4096]) {
   argp.options = options;
   argp.parser = parse_argp;
   argp.args_doc = "PROG [ARGS]";
-  return argp_parse(&argp, ac, av, 0, 0, path_exe);
+  uint64_t retval = argp_parse(&argp, ac, av, 0, 0, path_exe);
+  if (retval)
+    return 1;
+  return offset;
 }
 
-int32_t exec_arg(char** av, char** envp) {
-  const int64_t pid = fork();
+void exec_arg(char* path_exe, int offset, char** av, char** envp) {
+  pid = fork();
   if (pid == -1) {
-    perror("parent: clone3");
+    perror("parent: fork");
     exit(1);
   }
   if (pid == 0) {
     raise(SIGSTOP);
-    execve(get_path(av[1]), av + 1, envp);
+    execve(get_path(path_exe), av + offset + 1, envp);
     perror("execve");
     exit(1);
   }
-  return pid;
 }
 
-void setup_tracer(const int64_t pid) {
+void setup_tracer(void) {
   signal_unblock();
   signal_block();
   usleep(100);

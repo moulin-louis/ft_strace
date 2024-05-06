@@ -7,21 +7,20 @@
 char strings[6][32] = {0};
 
 void grab_string(uint64_t* address_tracee, uint64_t* address_tracer) {
-  char path[4096] = {0};
+  struct iovec local[1];
+  struct iovec remote[1];
 
-  snprintf(path, sizeof(path), "/proc/%d/mem", pid);
-  const int fd = open(path, O_RDONLY);
-  if (fd == -1) {
-    perror("open proc/[PID]/mem");
+  local[0].iov_base = address_tracer;
+  local[0].iov_len = 31;
+  remote[0].iov_base = address_tracee;
+  remote[0].iov_len = 31;
+  // next line is equivalent to `process_vm_readv(pid, local, 2, remote, 1, 0);` (we just don't use glibc interface/wrapper)
+  ssize_t nread = syscall(310, pid, local, 2, remote, 1, 0);
+  if (nread == -1) {
+    perror("syscall 310 (process_readv)");
     exit(2);
   }
-  lseek(fd, (__off_t)address_tracee, SEEK_SET);
-  const int64_t retval = read(fd, address_tracer, 31);
-  if (retval == -1) {
-    perror("read");
-    exit(2);
-  }
-  ((char*)address_tracer)[retval] = 0;
+  ((char*)address_tracer)[nread] = 0;
 }
 
 void setup_string(const char* format, t_regs* regs) {

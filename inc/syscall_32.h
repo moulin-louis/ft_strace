@@ -2,7 +2,7 @@
 // Created by loumouli on 3/19/24.
 //
 
-//Copied from tsiguenz github
+// Copied from tsiguenz github
 
 #ifndef SYSCALLS_32_H
 #define SYSCALLS_32_H

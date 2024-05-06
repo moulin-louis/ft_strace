@@ -2,7 +2,7 @@
 // Created by loumouli on 3/16/24.
 //
 
-//Copied from tsiguenz github
+// Copied from tsiguenz github
 
 #ifndef SYSCALL_64_H
 #define SYSCALL_64_H
