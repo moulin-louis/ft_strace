@@ -129,11 +129,11 @@ int main(int ac, char** av, char** envp) {
     fprintf(stderr, "Usage: ft_strace [OPTION...] PROG [ARGS]\n");
     return 1;
   }
-  const int offset = parse_opt(ac, av, path_exe);
+  const int offset = parse_opt(av, path_exe);
   if (offset == -1)
     return 1;
   if (stat_count) {
-    //redirect stderr to null so the output is clean with -c 
+    // redirect stderr to null so the output is clean with -c
     const int fd = open("/dev/null", O_RDWR);
     if (fd == -1) {
       perror("open /dev/null");

@@ -101,7 +101,7 @@ extern char* errno_str[];
 // Setup function
 void setup_tracer(void);
 
-int32_t parse_opt(int ac, char** av, char path_exe[4096]);
+int32_t parse_opt(char** av, char path_exe[4096]);
 
 char* get_path(char* arg);
 

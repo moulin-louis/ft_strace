@@ -5,7 +5,6 @@
 #include "ft_strace.h"
 
 void print_entry_sc_64(const t_syscall* syscall, t_regs* regs) {
-  // copy string from tracee process to tracer
   const uint8_t str[4096] = {0};
   setup_string(syscall->format, regs);
   snprintf((char*)str, sizeof(str), syscall->format, syscall->name, regs->regs_64.rdi, regs->regs_64.rsi,
@@ -20,7 +19,7 @@ void print_entry_sc_64(const t_syscall* syscall, t_regs* regs) {
 }
 
 void print_exit_sc_64(const t_regs* regs) {
-  const int64_t retval = (int64_t)regs->regs_64.rax;
+  const int64_t retval = regs->regs_64.rax;
   if (retval > -1 || retval < -4095) {
     if (retval > 10000 || retval < -10000)
       fprintf(stderr, ") = %#lx\n", retval);
