@@ -141,7 +141,6 @@ int main(int ac, char** av, char** envp) {
     }
     dup2(fd, STDERR_FILENO);
   }
-  printf("path exe = %s\n", path_exe);
   if (get_path(path_exe) == NULL) {
     fprintf(stderr, "ft_strace: %s: No such file\n", av[1]);
     return 1;
