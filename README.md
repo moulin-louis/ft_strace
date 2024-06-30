@@ -6,4 +6,4 @@
 all the signals it receives, similar to the tool truss on other Unix systems.
 - It was made possible through a feature of the Linux kernel called ptrace.
 ## Note:
-- 125/100
+- 105/100
